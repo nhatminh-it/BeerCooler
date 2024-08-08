@@ -222,3 +222,18 @@ def train_beermodel(folder_beers,
 crop_beers_to_folder(folder_beers='data/original', folder_beers_cropped='data/detected', GPU=False)
 
 # train_beermodel(folder_beers='data\\detected', model_location='beerchallenge_resnet50_7brands.pth', num_epochs=10, GPU=True)
+
+
+
+def fibonacci(n):
+    if n <= 1:
+        return n
+    else:
+        return fibonacci(n - 1) + fibonacci(n - 2)
+
+
+for i in range(10):
+    print(fibonacci(i))
+# Fibonacci sequence
+
+
