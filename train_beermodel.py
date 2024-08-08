@@ -12,30 +12,32 @@ import copy
 import random
 
 
-def split_trainval(folder_beers, fraction_train = 0.7):
+def split_trainval(folder_beers, fraction_train=0.7):
     brands = os.listdir(folder_beers)
 
     #create train and val folders
-    os.makedirs(folder_beers+'\\train')
-    os.makedirs(folder_beers+'\\val')
+    os.makedirs(folder_beers + '\\train')
+    os.makedirs(folder_beers + '\\val')
 
     for brand in brands:
         # get images
         images = os.listdir(folder_beers + '\\' + brand)
 
         # select random images to train / validate
-        n_train = int(round(len(images)*fraction_train, 0))
+        n_train = int(round(len(images) * fraction_train, 0))
         images_train = random.sample(images, n_train)
         images_val = [x for x in images if x not in images_train]
 
         # move images to new folders
         os.makedirs(folder_beers + '\\train' + '\\' + brand)
         for image in images_train:
-            os.rename(src=folder_beers + '\\' + brand + '\\' + image, dst=folder_beers + '\\train' + '\\' + brand + '\\' + image)
+            os.rename(src=folder_beers + '\\' + brand + '\\' + image,
+                      dst=folder_beers + '\\train' + '\\' + brand + '\\' + image)
 
         os.makedirs(folder_beers + '\\val' + '\\' + brand)
         for image in images_val:
-            os.rename(src=folder_beers + '\\' + brand + '\\' + image, dst=folder_beers + '\\val' + '\\' + brand + '\\' + image)
+            os.rename(src=folder_beers + '\\' + brand + '\\' + image,
+                      dst=folder_beers + '\\val' + '\\' + brand + '\\' + image)
 
         #remove original folder brand = 'amstel'
         os.rmdir(folder_beers + '\\' + brand)
@@ -43,7 +45,7 @@ def split_trainval(folder_beers, fraction_train = 0.7):
 
 def crop_beers_to_folder(folder_beers,
                          folder_beers_cropped,
-                         GPU = True):
+                         GPU=True):
     # import data
     all_trainval_data = datasets.ImageFolder(root=folder_beers)
 
@@ -69,7 +71,7 @@ def crop_beers_to_folder(folder_beers,
         try:
             image = all_trainval_data[i][0]
             boxes, classes, labels, preds = object_detection.find_bottles(image=image, model=obj_det_model,
-                                                                             detection_threshold=.8, GPU=GPU)
+                                                                          detection_threshold=.8, GPU=GPU)
             # if there are multiple boxes (beers), make 1 large box. If there is only 1 beer, this doesn't change anything
             if len(boxes) > 0:
                 x_start = min([x[0] for x in boxes])
@@ -90,14 +92,16 @@ def crop_beers_to_folder(folder_beers,
             print('')
 
         # print progress each 25 images
-        if i%25==0:
-            print(str(i) + ' / ' + str(len(all_trainval_data)) + ' (' + str(round(i/len(all_trainval_data)*100)) + '%)')
+        if i % 25 == 0:
+            print(str(i) + ' / ' + str(len(all_trainval_data)) + ' (' + str(
+                round(i / len(all_trainval_data) * 100)) + '%)')
     return cropped_results
 
+
 def train_beermodel(folder_beers,
-                    model_location = './beerchallenge_resnet50.pth',
-                    num_epochs=25, 
-                    GPU = True):
+                    model_location='./beerchallenge_resnet50.pth',
+                    num_epochs=25,
+                    GPU=True):
     # load Resnet50
     model_ft = models.resnet50(pretrained=True)
 
@@ -110,7 +114,8 @@ def train_beermodel(folder_beers,
             transforms.RandomResizedCrop(224),
             transforms.RandomHorizontalFlip(),
             transforms.ToTensor(),
-            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225]) # normalize images for R, G, B (both mean and SD)
+            transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+            # normalize images for R, G, B (both mean and SD)
         ]),
         'val': transforms.Compose([
             transforms.Resize(256),
@@ -148,7 +153,7 @@ def train_beermodel(folder_beers,
     best_acc = 0.0
 
     for epoch in range(num_epochs):
-        print('Epoch {}/{}'.format(epoch+1, num_epochs))
+        print('Epoch {}/{}'.format(epoch + 1, num_epochs))
         print('-' * 10)
 
         # Each epoch has a training and validation phase
@@ -156,7 +161,7 @@ def train_beermodel(folder_beers,
             if phase == 'train':
                 model_ft.train()  # Set model to training mode
             else:
-                model_ft.eval()   # Set model to evaluate mode
+                model_ft.eval()  # Set model to evaluate mode
 
             running_loss = 0.0
             running_corrects = 0
@@ -211,11 +216,9 @@ def train_beermodel(folder_beers,
     torch.save(model_ft.state_dict(), model_location)
     #return model_ft
 
+
 # split_trainval(beers_folder='data\\original')
 
-# crop_beers_to_folder(folder_beers='data\\original', folder_beers_cropped='data\\detected', GPU=True)
+crop_beers_to_folder(folder_beers='data/original', folder_beers_cropped='data/detected', GPU=False)
 
 # train_beermodel(folder_beers='data\\detected', model_location='beerchallenge_resnet50_7brands.pth', num_epochs=10, GPU=True)
-
-
-

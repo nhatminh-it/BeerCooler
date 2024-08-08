@@ -14,6 +14,7 @@ from pathlib import Path
 def get_classes():
     return ['Amstel', 'Bavaria', 'Desperados', 'Grolsch', 'Heineken', 'Hertog Jan', 'Jupiler']
 
+
 @st.cache
 def get_class_model_Drive():
     save_dest = Path('checkpoints')
@@ -25,6 +26,7 @@ def get_class_model_Drive():
 
     model = resnet50(pretrained=True)
     return model
+
 
 class ResNet(nn.Module):
     def __init__(self):
@@ -38,7 +40,10 @@ class ResNet(nn.Module):
         self.resnet = get_class_model_Drive()
         num_ftrs = self.resnet.fc.in_features
         self.resnet.fc = nn.Linear(num_ftrs, len(class_names))
-        self.resnet.load_state_dict(torch.load(model_name))
+        try:
+            self.resnet.load_state_dict(torch.load(model_name))
+        except Exception as err:
+            print("Eeeeeeeeeeeee: ", err)
 
         # isolate the feature blocks
         self.features = nn.Sequential(self.resnet.conv1,
@@ -83,6 +88,7 @@ class ResNet(nn.Module):
 
         return x
 
+
 def beer_classification(img_location, heatmap_location, class_int=None):
     # get classes
     class_names = get_classes()
@@ -106,12 +112,13 @@ def beer_classification(img_location, heatmap_location, class_int=None):
     pred = resnet(img)
 
     # tranfors tensors with results to probabilities
-    sm = torch.nn.Softmax(dim=1)  # use softmax to convert tensor values to probs (dim = columns (0) or rows (1) have to sum up to 1?)
+    sm = torch.nn.Softmax(
+        dim=1)  # use softmax to convert tensor values to probs (dim = columns (0) or rows (1) have to sum up to 1?)
     probabilities = sm(pred)
 
     # get the gradient of the output with respect to the parameters of the model
-    if class_int==None:
-        pred[:, pred.argmax()].backward() # heatmap of class with highest prob
+    if class_int is None:
+        pred[:, pred.argmax()].backward()  # heatmap of class with highest prob
     else:
         pred[:, class_int].backward()
 
@@ -149,17 +156,15 @@ def beer_classification(img_location, heatmap_location, class_int=None):
     # Get the color map by name:
     cm = plt.get_cmap('jet')
 
-    heatmap = np.asarray(heatmap)/255
+    heatmap = np.asarray(heatmap) / 255
     # Apply the colormap like a function to any array:
     heatmap = cm(heatmap)
     heatmap = np.delete(heatmap, 3, 2)
 
     heatmap = heatmap * 255
-    mix = (1.0 - 0.2) * np.asarray(img) + 0.9 * heatmap # (80% of original picture + 90% of heatmap )
+    mix = (1.0 - 0.2) * np.asarray(img) + 0.9 * heatmap  # (80% of original picture + 90% of heatmap )
 
     mix = np.clip(mix, 0, 255).astype(np.uint8)
     # save heatmap
     Image.fromarray(mix).save(heatmap_location)
     return Image.open(heatmap_location), probabilities, class_names[pred.argmax()]
-
-
