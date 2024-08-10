@@ -12,16 +12,16 @@ import copy
 import random
 
 
-def split_trainval(folder_beers, fraction_train=0.7):
+def split_trainval(folder_beers, fraction_train=0.8):
     brands = os.listdir(folder_beers)
 
     #create train and val folders
-    os.makedirs(folder_beers + '\\train')
-    os.makedirs(folder_beers + '\\val')
+    os.makedirs(folder_beers + '/train')
+    os.makedirs(folder_beers + '/val')
 
     for brand in brands:
         # get images
-        images = os.listdir(folder_beers + '\\' + brand)
+        images = os.listdir(folder_beers + '/' + brand)
 
         # select random images to train / validate
         n_train = int(round(len(images) * fraction_train, 0))
@@ -29,18 +29,18 @@ def split_trainval(folder_beers, fraction_train=0.7):
         images_val = [x for x in images if x not in images_train]
 
         # move images to new folders
-        os.makedirs(folder_beers + '\\train' + '\\' + brand)
+        os.makedirs(folder_beers + '/train' + '/' + brand)
         for image in images_train:
-            os.rename(src=folder_beers + '\\' + brand + '\\' + image,
-                      dst=folder_beers + '\\train' + '\\' + brand + '\\' + image)
+            os.rename(src=folder_beers + '/' + brand + '/' + image,
+                      dst=folder_beers + '/train' + '/' + brand + '/' + image)
 
-        os.makedirs(folder_beers + '\\val' + '\\' + brand)
+        os.makedirs(folder_beers + '/val' + '/' + brand)
         for image in images_val:
-            os.rename(src=folder_beers + '\\' + brand + '\\' + image,
-                      dst=folder_beers + '\\val' + '\\' + brand + '\\' + image)
+            os.rename(src=folder_beers + '/' + brand + '/' + image,
+                      dst=folder_beers + '/val' + '/' + brand + '/' + image)
 
         #remove original folder brand = 'amstel'
-        os.rmdir(folder_beers + '\\' + brand)
+        os.rmdir(folder_beers + '/' + brand)
 
 
 def crop_beers_to_folder(folder_beers,
@@ -217,23 +217,13 @@ def train_beermodel(folder_beers,
     #return model_ft
 
 
-# split_trainval(beers_folder='data\\original')
+# split_trainval(folder_beers='data/original')
 
 crop_beers_to_folder(folder_beers='data/original', folder_beers_cropped='data/detected', GPU=False)
 
-# train_beermodel(folder_beers='data\\detected', model_location='beerchallenge_resnet50_7brands.pth', num_epochs=10, GPU=True)
+# train_beermodel(folder_beers='data/detected', model_location='beerchallenge_resnet50_7brands.pth', num_epochs=10, GPU=True)
 
 
 
-def fibonacci(n):
-    if n <= 1:
-        return n
-    else:
-        return fibonacci(n - 1) + fibonacci(n - 2)
-
-
-for i in range(10):
-    print(fibonacci(i))
-# Fibonacci sequence
 
 
