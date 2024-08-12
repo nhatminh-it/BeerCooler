@@ -1,94 +1,59 @@
 import numpy as np
 import torch
+from ultralytics import YOLO
 import torchvision.transforms as transforms
-import torchvision
 import streamlit as st
 from pathlib import Path
-from GD_download import download_file_from_google_drive
 
-def get_obj_det_model(local=False):
-    # download or load the model from disk
+def get_obj_det_model(model_name='yolov8n.pt', local=False):
+    # Load YOLOv8 model from Ultralytics
     if local:
-        torch.hub.set_dir('.')
-    return torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True, min_size=800).eval()
-
-def crop_beers(image, model, threshold, GPU=True):
-    #  device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
-    boxes, classes, labels, preds = find_bottles(image, model, detection_threshold=threshold, GPU=GPU)
-    if len(boxes) > 0:
-        image_cropped = image.crop(tuple(boxes[0]))  # crop image: select only relevant part of pic
-        # todo correct als er 2 boxes zijn (nu pak degene met hoogste pred, boxes is al gesorteerd op pred)
-    else:
-        image_cropped = image
-    # image = draw_boxes(boxes, classes, labels, image)
-    return image_cropped, len(boxes)
-
-
-def find_bottles(image, model, detection_threshold=0.8, GPU=True):
-    coco_names = [
-        '__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
-        'train', 'truck', 'boat', 'traffic light', 'fire hydrant', 'N/A', 'stop sign',
-        'parking meter', 'bench', 'bird', 'cat', 'dog', 'horse', 'sheep', 'cow',
-        'elephant', 'bear', 'zebra', 'giraffe', 'N/A', 'backpack', 'umbrella', 'N/A', 'N/A',
-        'handbag', 'tie', 'suitcase', 'frisbee', 'skis', 'snowboard', 'sports ball',
-        'kite', 'baseball bat', 'baseball glove', 'skateboard', 'surfboard', 'tennis racket',
-        'bottle', 'N/A', 'wine glass', 'cup', 'fork', 'knife', 'spoon', 'bowl',
-        'banana', 'apple', 'sandwich', 'orange', 'broccoli', 'carrot', 'hot dog', 'pizza',
-        'donut', 'cake', 'chair', 'couch', 'potted plant', 'bed', 'N/A', 'dining table',
-        'N/A', 'N/A', 'toilet', 'N/A', 'tv', 'laptop', 'mouse', 'remote', 'keyboard', 'cell phone',
-        'microwave', 'oven', 'toaster', 'sink', 'refrigerator', 'N/A', 'book',
-        'clock', 'vase', 'scissors', 'teddy bear', 'hair drier', 'toothbrush'
-    ]
-
-    device = torch.device('cuda' if GPU else 'cpu')
-    model.to(device)
-
-    # define the torchvision image transforms
-    transform = transforms.Compose([
-        transforms.ToTensor()])
-
-    # transform the image to tensor
-    image = transform(image)
-    image = image.unsqueeze(0)  # add a batch dimension
-    if GPU:
-        image = image.cuda()
-    outputs = model(image) # get the predictions on the image
-
-    pred_classes = [coco_names[i] for i in outputs[0]['labels'].cpu().numpy()]
-
-    # get score for all the predicted objects
-    pred_scores = outputs[0]['scores'].detach().cpu().numpy()
-    # get all the predicted bounding boxes
-    pred_bboxes = outputs[0]['boxes'].detach().cpu().numpy()
-    # which labels are bottles?
-    bottles = []
-    for i in pred_classes:
-        bottles.append(i == 'bottle')
-    bottles = np.array(bottles)
-
-    boxes = pred_bboxes.astype(np.int32)
-
-    # get boxes above the threshold score & which are bottles
-    relevant_outputs = (pred_scores >= detection_threshold) & bottles
-
-    if sum(relevant_outputs) > 0:
-        return boxes[relevant_outputs], \
-               list(np.array(pred_classes)[relevant_outputs]), \
-               outputs[0]['labels'][relevant_outputs], \
-               pred_scores[relevant_outputs]
-    else:
-        return[[], [], [], []]
-
-@st.cache
-def get_obj_det_model_Drive():
-    save_dest = Path('checkpoints')
-    save_dest.mkdir(exist_ok=True)
-    f_checkpoint = Path("checkpoints/fasterrcnn_resnet50_fpn_coco-258fb6c6.pth")
-    if not f_checkpoint.exists():
-        print('downloading obj det model')
-        with st.spinner("Downloading object detection model... this may take a while! \n Don't stop it!"):
-            download_file_from_google_drive('1mJ_rRsGYDplNab-gkBeObEBspWGVNfg6', f_checkpoint)
-
-    model = torchvision.models.detection.fasterrcnn_resnet50_fpn(pretrained=True, min_size=800).eval()
+        torch.hub.set_dir('.')  # Set directory for local cache if needed
+    model = YOLO(model_name)  # You can specify different model variants like 'yolov8n.pt', 'yolov8s.pt', etc.
     return model
 
+def crop_beers(image, model, threshold, GPU=True):
+    boxes, classes, labels, preds = find_bottles_and_cans(image, model, detection_threshold=threshold, GPU=GPU)
+    if len(boxes) > 0:
+        image_cropped = image.crop(tuple(boxes[0]))  # Crop image: select only relevant part of pic
+    else:
+        image_cropped = image
+    return image_cropped, len(boxes)
+
+def find_bottles_and_cans(image, model, detection_threshold=0.3, GPU=True):
+    # Convert PIL Image to numpy array if necessary
+    if not isinstance(image, np.ndarray):
+        image = np.array(image)
+
+    device = torch.device('cuda' if GPU and torch.cuda.is_available() else 'cpu')
+    model.to(device)
+
+    # Run YOLOv8 inference
+    results = model(image, conf=detection_threshold, device=device)
+
+    # Process results
+    boxes = []
+    classes = []
+    labels = []
+    preds = []
+
+    for r in results:
+        for box in r.boxes:
+            if box.cls in [39, 41]:  # 39 is the class index for 'bottle', 41 is for 'can'
+                if box.cls == 39:
+                    classes.append('bottle')
+                elif box.cls == 41:
+                    classes.append('can')
+
+                boxes.append(box.xyxy[0].cpu().numpy().astype(np.int32))
+                labels.append(box.cls.cpu())
+                preds.append(box.conf.cpu().numpy())
+
+    return np.array(boxes), classes, labels, np.array(preds)
+
+@st.cache_resource
+def get_obj_det_model_DirectDownload(model_name='yolov8n.pt'):
+    # This function directly downloads the model if it's not present
+    print('Loading or downloading the object detection model')
+    model = YOLO(model_name)  # This will download the model if it's not present
+    return model

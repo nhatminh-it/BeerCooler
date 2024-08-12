@@ -1,70 +1,58 @@
 import torch
 import torch.nn as nn
 from torchvision.models import resnet50
+from torchvision import transforms
+from PIL import Image
 import numpy as np
 import matplotlib.pyplot as plt
-from PIL import Image
-from torchvision import transforms
-import torchvision
-from GD_download import download_file_from_google_drive
-import streamlit as st
-from pathlib import Path
+# Function to load class names
+import os
+train_folder = 'data/detected/train'
+def get_classes(train_folder_path):
+    return sorted([d.name for d in os.scandir(train_folder) if d.is_dir()])
 
 
-def get_classes():
-    return ['Amstel', 'Bavaria', 'Desperados', 'Grolsch', 'Heineken', 'Hertog Jan', 'Jupiler']
-
-
-@st.cache
-def get_class_model_Drive():
-    save_dest = Path('checkpoints')
-    save_dest.mkdir(exist_ok=True)
-    f_checkpoint = Path("checkpoints/resnet50-19c8e357.pth")
-    if not f_checkpoint.exists():
-        with st.spinner("Downloading classification model... this may take a while! \n Don't stop it!"):
-            download_file_from_google_drive('1BhJaGO6ENvk5va8zVaSJsl8XFCVckCu6', f_checkpoint)
-
-    model = resnet50(pretrained=True)
-    return model
-
-
+# Custom ResNet class for your specific task
 class ResNet(nn.Module):
-    def __init__(self):
+    def __init__(self, model_path, num_classes, device):
         super(ResNet, self).__init__()
-
-        class_names = get_classes()
-        model_name = "beerchallenge_resnet50_7brands.pth"
-
-        # define the resnet 50
-        #torch.hub.set_dir('.')
-        self.resnet = get_class_model_Drive()
+        self.train_folder = 'data/detected/train'
+        self.resnet = resnet50(pretrained=False)
         num_ftrs = self.resnet.fc.in_features
-        self.resnet.fc = nn.Linear(num_ftrs, len(class_names))
+        self.resnet.fc = nn.Linear(num_ftrs, num_classes)
+        self.class_names = get_classes(train_folder_path=self.train_folder)
+        # Load the pre-trained model weights
         try:
-            self.resnet.load_state_dict(torch.load(model_name))
+            self.resnet.load_state_dict(torch.load(model_path, map_location=device))
         except Exception as err:
-            print("Eeeeeeeeeeeee: ", err)
+            print("Error loading model: ", err)
 
-        # isolate the feature blocks
-        self.features = nn.Sequential(self.resnet.conv1,
-                                      self.resnet.bn1,
-                                      nn.ReLU(),
-                                      nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False),
-                                      self.resnet.layer1,
-                                      self.resnet.layer2,
-                                      self.resnet.layer3,
-                                      self.resnet.layer4)
+        # Isolate the feature blocks
+        self.features = nn.Sequential(
+            self.resnet.conv1,
+            self.resnet.bn1,
+            nn.ReLU(),
+            nn.MaxPool2d(kernel_size=3, stride=2, padding=1, dilation=1, ceil_mode=False),
+            self.resnet.layer1,
+            self.resnet.layer2,
+            self.resnet.layer3,
+            self.resnet.layer4
+        )
 
-        # average pooling layer
+        # Average pooling layer
         self.avgpool = self.resnet.avgpool
 
-        # classifier
+        # Classifier
         self.classifier = self.resnet.fc
 
-        # gradient placeholder
+        # Gradient placeholder
         self.gradient = None
 
-    # hook for the gradients
+        # Set the model to evaluation mode
+        self.to(device)
+        self.eval()
+
+    # Hook for the gradients
     def activations_hook(self, grad):
         self.gradient = grad
 
@@ -75,25 +63,48 @@ class ResNet(nn.Module):
         return self.features(x)
 
     def forward(self, x):
-        # extract the features
+        # Extract the features
         x = self.features(x)
 
-        # register the hook
+        # Register the hook
         h = x.register_hook(self.activations_hook)
 
-        # complete the forward pass
+        # Complete the forward pass
         x = self.avgpool(x)
         x = x.view((1, -1))
         x = self.classifier(x)
 
         return x
 
+# Function to predict the class of an image
+def predict_image(image_path, model, class_names, device):
+    # Define the preprocessing transforms
+    preprocess = transforms.Compose([
+        transforms.Resize(256),
+        transforms.CenterCrop(224),
+        transforms.ToTensor(),
+        transforms.Normalize([0.485, 0.456, 0.406], [0.229, 0.224, 0.225])
+    ])
 
+    # Open the image and apply the transforms
+    image = Image.open(image_path).convert("RGB")
+    image = preprocess(image).unsqueeze(0)  # Add batch dimension
+    image = image.to(device)
+
+    # Perform the forward pass and get the predicted class
+    with torch.no_grad():
+        outputs = model(image)
+        _, preds = torch.max(outputs, 1)
+
+    return class_names[preds[0]]
 def beer_classification(img_location, heatmap_location, class_int=None):
     # get classes
-    class_names = get_classes()
+    train_folder = 'data/detected/train'
+    class_names = get_classes(train_folder_path=train_folder)
     # init the resnet
-    resnet = ResNet()
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+    model_path = 'beerchallenge_resnet50_6vietnambrands.pth'
+    resnet = ResNet(model_path=model_path, num_classes=len(class_names), device=device)
     # set the evaluation mode
     _ = resnet.eval()
 
@@ -168,3 +179,18 @@ def beer_classification(img_location, heatmap_location, class_int=None):
     # save heatmap
     Image.fromarray(mix).save(heatmap_location)
     return Image.open(heatmap_location), probabilities, class_names[pred.argmax()]
+
+if __name__ == "__main__":
+    model_path = "beerchallenge_resnet50_6vietnambrands.pth"
+    train_folder = "/path/to/your/train_folder"
+    image_path = "/path/to/your/image.jpg"
+    device = torch.device("cuda:0" if torch.cuda.is_available() else "cpu")
+
+    # Load class names and the model
+    class_names = get_classes(train_folder)
+    num_classes = len(class_names)
+    model = ResNet(model_path, num_classes, device)
+
+    # Predict the class of the image
+    predicted_class = predict_image(image_path, model, class_names, device)
+    print(f"Predicted class: {predicted_class}")

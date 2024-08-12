@@ -12,7 +12,7 @@ import copy
 import random
 
 
-def split_trainval(folder_beers, fraction_train=0.8):
+def split_trainval(folder_beers, fraction_train=0.85):
     brands = os.listdir(folder_beers)
 
     #create train and val folders
@@ -43,58 +43,64 @@ def split_trainval(folder_beers, fraction_train=0.8):
         os.rmdir(folder_beers + '/' + brand)
 
 
-def crop_beers_to_folder(folder_beers,
-                         folder_beers_cropped,
-                         GPU=True):
-    # import data
+def crop_beers_to_folder(folder_beers, folder_beers_cropped, GPU=True):
+    # Import data
     all_trainval_data = datasets.ImageFolder(root=folder_beers)
 
-    # get folder structure in folder_beers
+    # Get folder structure in folder_beers
     folder_beers_str = [x[0].replace(folder_beers, '') for x in os.walk(folder_beers)]
 
-    # create folder structure (if it not already exists)
+    # Create folder structure (if it does not already exist)
     for i in folder_beers_str:
         if not os.path.exists(folder_beers_cropped + i):
             os.makedirs(folder_beers_cropped + i)
 
-    # load object detection model
+    # Load object detection model
     obj_det_model = object_detection.get_obj_det_model()
     obj_det_model.eval()
     if GPU:
         obj_det_model.cuda()
 
-    #save results of cropped files in df
+    # Save results of cropped files in DataFrame
     cropped_results = pd.DataFrame(columns=['i', 'file', 'n_boxes'])
 
-    # crop all images
+    # Crop all images
     for i in range(len(all_trainval_data)):
+        image_path = all_trainval_data.samples[i][0]
         try:
             image = all_trainval_data[i][0]
             boxes, classes, labels, preds = object_detection.find_bottles(image=image, model=obj_det_model,
                                                                           detection_threshold=.8, GPU=GPU)
-            # if there are multiple boxes (beers), make 1 large box. If there is only 1 beer, this doesn't change anything
+            # If there are multiple boxes (beers), make one large box. If there is only one beer, this doesn't change anything
             if len(boxes) > 0:
                 x_start = min([x[0] for x in boxes])
                 y_start = min([x[1] for x in boxes])
                 x_end = max([x[2] for x in boxes])
                 y_end = max([x[3] for x in boxes])
 
-                # crop image
+                # Crop image
                 image_cropped = image.crop((x_start, y_start, x_end, y_end))
 
-                # save cropped image
-                new_location = folder_beers_cropped + all_trainval_data.samples[i][0].replace(folder_beers, '')
+                # Save cropped image
+                new_location = folder_beers_cropped + image_path.replace(folder_beers, '')
                 image_cropped.save(new_location)
-            # add to df
-            cropped_results = cropped_results.append({'i': i, 'file': all_trainval_data.samples[i][0],
-                                                      'n_boxes': len(boxes)}, ignore_index=True)
+
+            # Add to DataFrame
+            cropped_results = pd.concat(
+                [cropped_results, pd.DataFrame([{'i': i, 'file': image_path, 'n_boxes': len(boxes)}])],
+                ignore_index=True)
+
+        except TypeError as e:
+            print(f"TypeError encountered with image {image_path}: {e}")
+            continue  # Skip to the next iteration if a TypeError occurs
+
         finally:
             print('')
 
-        # print progress each 25 images
+        # Print progress every 25 images
         if i % 25 == 0:
-            print(str(i) + ' / ' + str(len(all_trainval_data)) + ' (' + str(
-                round(i / len(all_trainval_data) * 100)) + '%)')
+            print(f"{i} / {len(all_trainval_data)} ({round(i / len(all_trainval_data) * 100)}%)")
+
     return cropped_results
 
 
@@ -219,11 +225,13 @@ def train_beermodel(folder_beers,
 
 # split_trainval(folder_beers='data/original')
 
-crop_beers_to_folder(folder_beers='data/original', folder_beers_cropped='data/detected', GPU=False)
+# crop_beers_to_folder(folder_beers='data/original', folder_beers_cropped='data/detected', GPU=False)
 
-# train_beermodel(folder_beers='data/detected', model_location='beerchallenge_resnet50_7brands.pth', num_epochs=10, GPU=True)
-
-
+# train_beermodel(folder_beers='data/detected', model_location='beerchallenge_resnet50_6vietnambrands.pth', num_epochs=10, GPU=True)
 
 
 
+# gg colab have some change
+# crop_beers_to_folder(folder_beers='/content/drive/MyDrive/Index/data/original', folder_beers_cropped='/content/drive/MyDrive/Index/data/detected', GPU=True)
+
+train_beermodel(folder_beers='/content/drive/MyDrive/Index/data/detected', model_location='/content/drive/MyDrive/Index/model/beerchallenge_resnet50_6vietnambrands.pth', num_epochs=50, GPU=True)

@@ -18,7 +18,7 @@ if not ip_address:
     st.warning("Please enter the IP address to continue.")
     st.stop()
 
-model_name = "beerchallenge_resnet50_7brands.pth"
+model_name = "beerchallenge_resnet50_6vietnambrands.pth"
 scored_image_location = 'latest_picture/latest_camera_photo_scored.jpg'
 class_names = beer_classification.get_classes()
 img_location = 'latest_picture/latest_camera_photo.jpg'
