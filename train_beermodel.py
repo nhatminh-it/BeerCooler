@@ -105,15 +105,15 @@ def crop_beers_to_folder(folder_beers, folder_beers_cropped, GPU=True):
 
 
 def train_beermodel(folder_beers,
-                    model_location='./beerchallenge_resnet50.pth',
+                    model_location='./beerchallenge_efficientnet_b7.pth',
                     num_epochs=25,
                     GPU=True):
-    # load Resnet50
-    model_ft = models.resnet50(pretrained=True)
+    # load EfficientNet-b7
+    model_ft = models.efficientnet_b7(pretrained=True)
 
     # set parameters
     since = time.time()
-    num_ftrs = model_ft.fc.in_features
+    num_ftrs = model_ft.classifier[1].in_features
     device = torch.device("cuda:0" if GPU else "cpu")
     data_transforms = {
         'train': transforms.Compose([
@@ -142,9 +142,8 @@ def train_beermodel(folder_beers,
     dataset_sizes = {x: len(image_datasets[x]) for x in ['train', 'val']}
     class_names = image_datasets['train'].classes
 
-    model_ft.fc = nn.Linear(num_ftrs, len(class_names))  # determine final (fully connected) layer
+    model_ft.classifier[1] = nn.Linear(num_ftrs, len(class_names))  # determine final (fully connected) layer
 
-    # torch.cuda.empty_cache() # empty cache
     model_ft = model_ft.to(device)
 
     criterion = nn.CrossEntropyLoss()
@@ -220,6 +219,7 @@ def train_beermodel(folder_beers,
     model_ft.load_state_dict(best_model_wts)
 
     torch.save(model_ft.state_dict(), model_location)
+
     #return model_ft
 
 
@@ -227,11 +227,11 @@ def train_beermodel(folder_beers,
 
 # crop_beers_to_folder(folder_beers='data/original', folder_beers_cropped='data/detected', GPU=False)
 
-# train_beermodel(folder_beers='data/detected', model_location='beerchallenge_resnet50_6vietnambrands.pth', num_epochs=10, GPU=True)
+train_beermodel(folder_beers='data/detected/', model_location='checkpoint/beerchallenge_efficientnet_b7.pth', num_epochs=10, GPU=False)
 
 
 
 # gg colab have some change
 # crop_beers_to_folder(folder_beers='/content/drive/MyDrive/Index/data/original', folder_beers_cropped='/content/drive/MyDrive/Index/data/detected', GPU=True)
 
-train_beermodel(folder_beers='/content/drive/MyDrive/Index/data/detected', model_location='/content/drive/MyDrive/Index/model/beerchallenge_resnet50_6vietnambrands.pth', num_epochs=50, GPU=True)
+# train_beermodel(folder_beers='/content/drive/MyDrive/Index/data/detected', model_location='/content/drive/MyDrive/Index/model/beerchallenge_resnet50_6vietnambrands.pth', num_epochs=50, GPU=True)
