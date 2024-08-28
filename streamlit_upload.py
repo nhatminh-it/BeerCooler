@@ -1,3 +1,4 @@
+import requests
 import streamlit as st
 import pandas as pd
 from PIL import Image
@@ -29,9 +30,9 @@ scored_image_location = 'latest_uploaded_photo_scored.jpg'
 img_location = 'latest_picture/latest_camera_photo.jpg'
 
 # Streamlit UI Start
-st.header('Advanced Beer Analyzing Application')
 
-image = st.file_uploader("Please upload your beer picture here", type=["jpg", "jpeg", "png"])
+
+
 
 # Initialize models
 beer_detector = BeerDetector(MODEL_ID, LOCAL_MODEL_DIR, DEVICE)
@@ -40,9 +41,39 @@ beer_classifier = BeerClassifier(CLASS_MODEL_PATH, LOGOS_FOLDER_PATH, GPU=USE_GP
 # Get classes name for inference
 label_classes = get_classes(LOGOS_FOLDER_PATH)
 
-if image is not None:
-    image = Image.open(image)
+st.header('Advanced Beer Analyzing Application')
 
+# Option to switch between uploading an image or entering a URL
+option = st.radio("Select Image Input Method", ('Upload Image', 'Image URL'))
+
+# Initialize img_to_classify to avoid NameError
+img_to_classify = None
+
+if option == 'Upload Image':
+    image = st.file_uploader("Please upload your beer picture here", type=["jpg", "jpeg", "png"])
+else:
+    image_url = st.text_input("Please enter the image URL here")
+    image = None  # Reset image to None if URL is provided
+
+# Processing the image based on user input (file or URL)
+if image is not None:  # When an image is uploaded
+    image = Image.open(image)
+    img_to_classify = image
+elif option == 'Image URL' and image_url:
+    try:
+        # Fetch the image from the URL
+        response = requests.get(image_url)
+        response.raise_for_status()
+
+        # Convert the response content into an image
+        image = Image.open(BytesIO(response.content))
+        img_to_classify = image
+    except requests.exceptions.RequestException as e:
+        st.error(f"Error loading image from URL: {e}")
+        img_to_classify = None
+
+if img_to_classify is not None:
+    image = img_to_classify
     # Create two columns: one for the original image and one for the results (placeholder)
     col1, col2 = st.columns([1, 1])
 
@@ -52,6 +83,32 @@ if image is not None:
             st.markdown('**Original image:**')
             st.image(get_image.resize_image(image=image, max_width=400, max_heigth=600))
 
+
+        st.markdown(
+            """
+            <style>
+            /* Apply the vertical line with reduced opacity and lighter color */
+            div[data-testid="column"] {
+                border-left: 1px solid rgba(255, 255, 255, 0.15);  /* Very light gray with 10% opacity for subtlety */
+                padding-left: 15px;   /* Reduced padding to tighten content */
+                padding-right: 15px;  /* Add small padding on the right to balance the layout */
+                height: 100%;  /* Make sure the height fits dynamically */
+            }
+            /* Adjust the content inside columns to reduce excess space */
+            div[data-testid="stVerticalBlock"] > div {
+                margin-bottom: 0px !important;  /* Tighten the bottom margin */
+                padding-bottom: 0px !important;  /* Remove extra padding */
+            }
+            /* Reduce the gap between inner elements */
+            div[data-testid="stHorizontalBlock"] > div {
+                padding-left: 10px !important;
+                padding-right: 0px !important;
+                margin-right: 0px !important;
+            }
+            </style>
+            """,
+            unsafe_allow_html=True
+        )
         # Set a placeholder for detected beer bottles in the right column
         placeholder = col2.empty()
 
@@ -61,7 +118,7 @@ if image is not None:
         if n_beers > 0:
             classified_beers_list = []
 
-            # Create a container to update the right column
+            # Create a container to update the right column (col2)
             with placeholder.container():
                 st.markdown("### Detected Beer Bottles")
 
@@ -72,26 +129,30 @@ if image is not None:
                     img_to_classify = scored_image_location_i
 
                     # Perform beer classification
-                    predicted_class, probabilities, img_heatmap = beer_classifier.predict(image_source=scored_image_location_i)
+                    predicted_class, probabilities, img_heatmap = beer_classifier.predict(
+                        image_source=scored_image_location_i)
                     classified_beers_list.append(predicted_class)
 
-                    # Display classification results for each detected beer in the right column
+                    img_heatmap = img_heatmap.resize(beer.size)
+
+                    # Display classification results for each detected beer in the right column (col2)
                     st.markdown(f"### Beer Bottle {i + 1}")
 
                     # Detected cropped beer bottle
                     st.markdown('**Cropped detected beer bottle:**')
-                    st.image(get_image.resize_image(image=beer, max_width=300, max_heigth=300))
+                    sub_col1, sub_col2, sub_col3, sub_col4 = st.columns([1, 1, 1, 1])
 
-                    # Display brand logo and classification results
-                    column1, column2 = st.columns([1, 1])
+                    with sub_col1:
+                        st.image(get_image.resize_image(image=beer, max_width=300, max_heigth=300))
 
-                    with column1:
+                    with sub_col2:
                         st.markdown('**Predicted beer brand:**')
                         # Display brand logo
                         logo_location = 'logos/' + str(predicted_class.lower()) + '.png'
-                        st.image(get_image.resize_image(image=Image.open(logo_location).convert('RGB'), max_width=150, max_heigth=150))
+                        st.image(get_image.resize_image(image=Image.open(logo_location).convert('RGB'), max_width=150,
+                                                        max_heigth=150))
 
-                    with column2:
+                    with sub_col3:
                         st.markdown('**Probabilities:**')
                         # Convert probabilities to a DataFrame
                         probabilities = probabilities.tolist()[0]
@@ -99,9 +160,10 @@ if image is not None:
                         df.columns = ['(%)']
                         st.dataframe(df.style.format('{:7,.1f}').highlight_max(axis=0))
 
-                    # Heatmap for the detected beer
-                    st.markdown(f"**Heatmap (what makes the algorithm think it's {str(predicted_class)}):**")
-                    st.image(get_image.resize_image(image=img_heatmap, max_width=300, max_heigth=300))
+                    with sub_col4:
+                        # Heatmap for the detected beer
+                        st.markdown(f"**Heatmap (what makes the algorithm think it's {str(predicted_class)}):**")
+                        st.image(get_image.resize_image(image=img_heatmap, max_width=300, max_heigth=300))
 
             # Plot the bounding boxes with detected labels and classes below the original image in the left column
             with col1:

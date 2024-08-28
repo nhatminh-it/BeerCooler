@@ -124,35 +124,35 @@ class BeerClassifier:
 
 
 
-# Define model path and logos folder path
-model_path = 'checkpoints/sabeco-internal-classification_efficientnet_b7.pth'
-logos_folder_path = 'logos'
-
-# Instantiate and use the BeerClassifier
-classifier = BeerClassifier(model_path, logos_folder_path, GPU=False)
-
-# Test with an image URL
-image_url = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRfDqis3iKACKqHKCyNlV6m-D6SqmxvBnlI0A&s'
-predicted_class, probabilities, combined_image = classifier.predict(image_url)
-
-# Print predicted class and probabilities
-print(f'Predicted class: {predicted_class}')
-print(f'Probabilities: {probabilities}')
-
-# Display the combined heatmap image using matplotlib
-plt.imshow(combined_image)
-plt.axis('off')
-plt.show()
-
-# Test with a local image file path
-image_path = 'data/original/lac_viet/7d9fdc0e9e027a0fa6a6ab5b2be4f05b.jpg'
-predicted_class, probabilities, combined_image = classifier.predict(image_path)
-
-# Print predicted class and probabilities
-print(f'Predicted class: {predicted_class}')
-print(f'Probabilities: {probabilities}')
-
-# Display the combined heatmap image using matplotlib
-plt.imshow(combined_image)
-plt.axis('off')
-plt.show()
+# # Define model path and logos folder path
+# model_path = 'checkpoints/sabeco-internal-classification_efficientnet_b7.pth'
+# logos_folder_path = 'logos'
+#
+# # Instantiate and use the BeerClassifier
+# classifier = BeerClassifier(model_path, logos_folder_path, GPU=False)
+#
+# # Test with an image URL
+# image_url = 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRfDqis3iKACKqHKCyNlV6m-D6SqmxvBnlI0A&s'
+# predicted_class, probabilities, combined_image = classifier.predict(image_url)
+#
+# # Print predicted class and probabilities
+# print(f'Predicted class: {predicted_class}')
+# print(f'Probabilities: {probabilities}')
+#
+# # Display the combined heatmap image using matplotlib
+# plt.imshow(combined_image)
+# plt.axis('off')
+# plt.show()
+#
+# # Test with a local image file path
+# image_path = 'data/original/lac_viet/7d9fdc0e9e027a0fa6a6ab5b2be4f05b.jpg'
+# predicted_class, probabilities, combined_image = classifier.predict(image_path)
+#
+# # Print predicted class and probabilities
+# print(f'Predicted class: {predicted_class}')
+# print(f'Probabilities: {probabilities}')
+#
+# # Display the combined heatmap image using matplotlib
+# plt.imshow(combined_image)
+# plt.axis('off')
+# plt.show()

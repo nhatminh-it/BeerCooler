@@ -120,18 +120,33 @@ class BeerDetector:
         else:
             raise ValueError("Invalid image source. Must be a URL, file path, or PIL Image.")
 
+        # Run the object detection
         results = self.object_detector.find_objects(image)
         bboxes = results['<OD>']['bboxes']
         labels = results['<OD>']['labels']
 
-        cropped_images, num_detections = self.image_processor.crop_objects(image, results)
+        # Filter for 'bottle' and 'tin can' only
+        allowed_labels = ['bottle', 'tin can']
+        filtered_bboxes = []
+        filtered_labels = []
+        for i, label in enumerate(labels):
+            if label in allowed_labels:
+                filtered_bboxes.append(bboxes[i])
+                filtered_labels.append(label)
 
-        # Show image
-        for idx, cropped_image in enumerate(cropped_images):
-            cropped_image.show(title=f"Detection {idx + 1}")
+        # Process only the allowed objects
+        if filtered_bboxes:
+            results['<OD>']['bboxes'] = filtered_bboxes
+            results['<OD>']['labels'] = filtered_labels
+            cropped_images, num_detections = self.image_processor.crop_objects(image, results)
+        else:
+            cropped_images, num_detections = [], 0
 
+        # Print the number of detections for debugging purposes
         print(f"Number of detections: {num_detections}")
-        return cropped_images, num_detections, bboxes, labels
+
+        # Return filtered results
+        return cropped_images, num_detections, filtered_bboxes, filtered_labels
 
 # if __name__ == "__main__":
 #     # Configuration
