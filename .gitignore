@@ -1,10 +1,8 @@
-
 __pycache__/get_image.cpython-38.pyc
 *.pyc
 *.xml
 data/
-latest_picture/heatmap_uploaded.jpg
-latest_picture/latest_uploaded_photo_scored.jpg
 checkpoints/sabeco-internal-classification_efficientnet_b7.pth
 checkpoints/Florence-2-large
 latest_picture/*.jpg
+!latest_picture/.keep
