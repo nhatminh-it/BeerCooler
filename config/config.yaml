@@ -1,0 +1,35 @@
+
+# Device Configuration
+device_running:
+  macos: true
+  architecture: 'arm'  # Options: 'x86', 'arm'
+
+# Object Detection Configuration
+object_detection:
+  model:
+    id: 'microsoft/Florence-2-large'
+    local_model_dir: 'checkpoints/Florence-2-large'
+  device:
+    type: 'cpu'  # Options: 'cpu','cuda' |||  *Note*: 'mps' is not support for this model
+#  image:
+#    url: "https://heineken-vietnam.com.vn/images/2023/bia-cao-cap-quoc-te-cua-chau-a.jpg"
+  settings:
+    max_new_tokens: 1024           # Maximum number of tokens for model generation
+    task_prompt: "<OD>"            # Default task prompt for object detection
+    num_beams: 3                   # Number of beams for beam search during generation
+    early_stopping: false          # Stop early if optimal output is found
+    do_sample: false               # Use sampling when decoding (false in this case)
+
+# Classification Configuration
+classification:
+  model:
+    path: 'checkpoints/sabeco-internal-classification_efficientnet_b7.pth'
+  logos_folder:
+    path: 'logos'
+  device:
+    type: 'cpu'   # Options: 'cpu', 'mps', 'cuda'
+#  image:
+#    url: 'https://encrypted-tbn0.gstatic.com/images?q=tbn:ANd9GcRfDqis3iKACKqHKCyNlV6m-D6SqmxvBnlI0A&s'
+  settings:
+    resize: true                  # Resizes image to model input size if true
+    resize_size: [224, 224]        # Resizing dimensions (width, height)

@@ -1,8 +1,14 @@
-
-beerchallenge_resnet50_7brands.pth
 __pycache__/get_image.cpython-38.pyc
 *.pyc
 *.xml
-latest_picture/heatmap_uploaded.jpg
-latest_picture/latest_uploaded_photo_scored.jpg
-beerchallenge_resnet50_7brands.pth
+data/
+checkpoints/sabeco-internal-classification_efficientnet_b7.pth
+checkpoints/Florence-2-large
+# Ignore all files in the latest_picture directory
+#latest_picture/*
+
+# But don't ignore the directory itself
+!latest_picture/
+
+# Specifically ignore all .jpg files within the directory
+#latest_picture/*.jpg
