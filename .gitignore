@@ -4,5 +4,11 @@ __pycache__/get_image.cpython-38.pyc
 data/
 checkpoints/sabeco-internal-classification_efficientnet_b7.pth
 checkpoints/Florence-2-large
-latest_picture/*.jpg
-!latest_picture/.keep
+# Ignore all files in the latest_picture directory
+#latest_picture/*
+
+# But don't ignore the directory itself
+!latest_picture/
+
+# Specifically ignore all .jpg files within the directory
+#latest_picture/*.jpg
