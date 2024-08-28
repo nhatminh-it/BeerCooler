@@ -1,3 +1,9 @@
+<div align="center">
+  <picture>
+    <source srcset="https://raw.githubusercontent.com/nhatminh-it/BeerCooler/duyle_dev/cover_image.jpg">
+    <img src="cover_image.jpg" alt="Cover Image" style="max-width: 100%; height: auto;">
+  </picture>
+</div>
 # BeerCooler [BeerClassification]
 
 This project aims to accurately classify different beer types based on their logos using advanced machine learning models. It provides all the necessary scripts and resources for image-based beer classification, leveraging a pre-trained model to streamline the process. The project is designed to make it easy to identify beer brands through logo recognition, ensuring a scalable and efficient solution.
