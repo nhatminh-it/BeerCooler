@@ -11,6 +11,9 @@ from model.classifier import BeerClassifier
 from utils.utils import get_classes
 from utils.plot import plot_bbox_with_class
 
+
+
+
 # Load configuration from config.yaml
 with open('config/config.yaml', 'r') as file:
     config = yaml.safe_load(file)
@@ -26,54 +29,45 @@ LOGOS_FOLDER_PATH = config['classification']['logos_folder']['path']
 USE_GPU = config['classification']['device']['type']
 
 # Location to save last run
-scored_image_location = 'latest_uploaded_photo_scored.jpg'
-img_location = 'latest_picture/latest_camera_photo.jpg'
+croped_image_name = 'latest_uploaded_photo_detected'
+img_location = f'latest_picture/{croped_image_name}.jpg'
 
-# Streamlit UI Start
+# Cache models to avoid reinitialization using st.cache_resource
+@st.cache_resource
+def load_models():
+    beer_detector = BeerDetector(MODEL_ID, LOCAL_MODEL_DIR, DEVICE)
+    beer_classifier = BeerClassifier(CLASS_MODEL_PATH, LOGOS_FOLDER_PATH, GPU=USE_GPU)
+    label_classes = get_classes(LOGOS_FOLDER_PATH)
+    return beer_detector, beer_classifier, label_classes
 
-
-
-
-# Initialize models
-beer_detector = BeerDetector(MODEL_ID, LOCAL_MODEL_DIR, DEVICE)
-beer_classifier = BeerClassifier(CLASS_MODEL_PATH, LOGOS_FOLDER_PATH, GPU=USE_GPU)
-
-# Get classes name for inference
-label_classes = get_classes(LOGOS_FOLDER_PATH)
+beer_detector, beer_classifier, label_classes = load_models()
 
 st.header('Advanced Beer Analyzing Application')
 
 # Option to switch between uploading an image or entering a URL
 option = st.radio("Select Image Input Method", ('Upload Image', 'Image URL'))
 
-# Initialize img_to_classify to avoid NameError
-img_to_classify = None
+# Initialize variables
+image = None
+image_url = None
 
+# Option to upload an image or enter a URL
 if option == 'Upload Image':
-    image = st.file_uploader("Please upload your beer picture here", type=["jpg", "jpeg", "png"])
-else:
+    uploaded_file = st.file_uploader("Please upload your beer picture here", type=["jpg", "jpeg", "png"])
+    if uploaded_file is not None:
+        image = Image.open(uploaded_file)
+elif option == 'Image URL':
     image_url = st.text_input("Please enter the image URL here")
-    image = None  # Reset image to None if URL is provided
+    if image_url:
+        try:
+            response = requests.get(image_url)
+            response.raise_for_status()
+            image = Image.open(BytesIO(response.content))
+        except requests.exceptions.RequestException as e:
+            st.error(f"Error loading image from URL: {e}")
 
-# Processing the image based on user input (file or URL)
-if image is not None:  # When an image is uploaded
-    image = Image.open(image)
-    img_to_classify = image
-elif option == 'Image URL' and image_url:
-    try:
-        # Fetch the image from the URL
-        response = requests.get(image_url)
-        response.raise_for_status()
-
-        # Convert the response content into an image
-        image = Image.open(BytesIO(response.content))
-        img_to_classify = image
-    except requests.exceptions.RequestException as e:
-        st.error(f"Error loading image from URL: {e}")
-        img_to_classify = None
-
-if img_to_classify is not None:
-    image = img_to_classify
+# Defer image processing until after a valid image is provided
+if image:
     # Create two columns: one for the original image and one for the results (placeholder)
     col1, col2 = st.columns([1, 1])
 
@@ -124,13 +118,13 @@ if img_to_classify is not None:
 
                 for i, beer in enumerate(detected_beers):
                     # Save the scored image and prepare for classification
-                    scored_image_location_i = f'latest_picture/{scored_image_location}_{i}.jpg'
-                    beer.save(scored_image_location_i)
-                    img_to_classify = scored_image_location_i
+                    croped_image_name_i = f'latest_picture/{croped_image_name}_{i}.jpg'
+                    beer.save(croped_image_name_i)
+                    img_to_classify = croped_image_name_i
 
                     # Perform beer classification
                     predicted_class, probabilities, img_heatmap = beer_classifier.predict(
-                        image_source=scored_image_location_i)
+                        image_source=croped_image_name_i)
                     classified_beers_list.append(predicted_class)
 
                     img_heatmap = img_heatmap.resize(beer.size)
