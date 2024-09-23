@@ -6,11 +6,11 @@ from utils import get_image
 import yaml
 import torch
 from io import BytesIO
-from model.object_detect import BeerDetector
+from model.florence2_det import BeerDetector
 from model.classifier import BeerClassifier
 from utils.utils import get_classes
 from utils.plot import plot_bbox_with_class
-
+from model.ultralytics_det import BeerDetector
 
 
 
@@ -18,10 +18,22 @@ from utils.plot import plot_bbox_with_class
 with open('config/config.yaml', 'r') as file:
     config = yaml.safe_load(file)
 
-# Object Detection Configurations
-MODEL_ID = config['object_detection']['model']['id']
-LOCAL_MODEL_DIR = config['object_detection']['model']['local_model_dir']
-DEVICE = torch.device(config['object_detection']['device']['type'])
+# Function to create BeerDetector based on config
+def create_beer_detector(object_detection_config):
+    MODEL_ID = object_detection_config['model']['id']
+    DEVICE_TYPE = object_detection_config['device']['type']
+    DEVICE = torch.device(DEVICE_TYPE)
+
+    if MODEL_ID == 'YOLOv8':
+        from model.ultralytics_det import BeerDetector
+        beer_detector = BeerDetector(object_detection_config, DEVICE)
+    elif MODEL_ID == 'microsoft/Florence-2-large':
+        from model.florence2_det import BeerDetector
+        LOCAL_MODEL_DIR = object_detection_config['model']['local_model_dir']
+        beer_detector = BeerDetector(MODEL_ID, LOCAL_MODEL_DIR, DEVICE)
+    else:
+        raise ValueError(f"Unsupported MODEL_ID: {MODEL_ID}")
+    return beer_detector
 
 # Classification Configurations
 CLASS_MODEL_PATH = config['classification']['model']['path']
@@ -35,7 +47,11 @@ img_location = f'latest_picture/{croped_image_name}.jpg'
 # Cache models to avoid reinitialization using st.cache_resource
 @st.cache_resource
 def load_models():
-    beer_detector = BeerDetector(MODEL_ID, LOCAL_MODEL_DIR, DEVICE)
+    # Object Detection Configurations
+    object_detection_config = config['object_detection']
+    # Create BeerDetector based on the model specified in the config
+    beer_detector = create_beer_detector(object_detection_config)
+    # Initialize the BeerClassifier
     beer_classifier = BeerClassifier(CLASS_MODEL_PATH, LOGOS_FOLDER_PATH, GPU=USE_GPU)
     label_classes = get_classes(LOGOS_FOLDER_PATH)
     return beer_detector, beer_classifier, label_classes

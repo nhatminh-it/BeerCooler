@@ -1,2 +1,2 @@
 from .classifier import BeerClassifier
-from .object_detect import BeerDetector
+from .florence2_det import BeerDetector

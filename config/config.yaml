@@ -4,21 +4,37 @@ device_running:
   macos: true
   architecture: 'arm'  # Options: 'x86', 'arm'
 
-# Object Detection Configuration
+## Object Detection Configuration
+#object_detection:
+#  model:
+#    id: 'microsoft/Florence-2-large'
+#    local_model_dir: 'checkpoints/Florence-2-large'
+#  device:
+#    type: 'cpu'  # Options: 'cpu','cuda' |||  *Note*: 'mps' is not support for this model
+##  image:
+##    url: "https://heineken-vietnam.com.vn/images/2023/bia-cao-cap-quoc-te-cua-chau-a.jpg"
+#  settings:
+#    max_new_tokens: 1024           # Maximum number of tokens for model generation
+#    task_prompt: "<OD>"            # Default task prompt for object detection
+#    num_beams: 3                   # Number of beams for beam search during generation
+#    early_stopping: false          # Stop early if optimal output is found
+#    do_sample: false               # Use sampling when decoding (false in this case)
+
+# Ultralytics Object Detection Configuration
 object_detection:
   model:
-    id: 'microsoft/Florence-2-large'
-    local_model_dir: 'checkpoints/Florence-2-large'
+    id: 'YOLOv8'                 # Indicates the YOLOv8 model is used for object detection
+    local_model_dir: 'checkpoints/YOLO/bottle_can_det.pt'  # Local directory to store the YOLOv8 model (if applicable)
+    data_config: 'checkpoints/YOLO/yolov8s_det_config.yaml'        # Data configuration file for YOLOv8
   device:
-    type: 'cpu'  # Options: 'cpu','cuda' |||  *Note*: 'mps' is not support for this model
-#  image:
-#    url: "https://heineken-vietnam.com.vn/images/2023/bia-cao-cap-quoc-te-cua-chau-a.jpg"
+    type: 'cpu'                  # Device type to run the object detection (Options: 'cpu', 'cuda')
   settings:
-    max_new_tokens: 1024           # Maximum number of tokens for model generation
-    task_prompt: "<OD>"            # Default task prompt for object detection
-    num_beams: 3                   # Number of beams for beam search during generation
-    early_stopping: false          # Stop early if optimal output is found
-    do_sample: false               # Use sampling when decoding (false in this case)
+    conf: 0.3                    # Confidence threshold for YOLOv8 predictions (default 0.25)
+    iou: 0.5                     # Intersection over Union (IoU) threshold for YOLOv8 (default 0.45)
+    agnostic_nms: true           # Whether to use class-agnostic NMS (default False)
+    max_det: 500                 # Maximum number of detections per image (default 1000)
+
+
 
 # Classification Configuration
 classification:
