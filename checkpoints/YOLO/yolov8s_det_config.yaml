@@ -1,0 +1,13 @@
+train: ../train/images
+val: ../valid/images
+test: ../test/images
+
+nc: 4
+names: ['bottle', 'can', 'can or bottle', 'refrigerator']
+
+roboflow:
+  workspace: l-vn-duy
+  project: beer-cooler
+  version: 1
+  license: Public Domain
+  url: https://universe.roboflow.com/l-vn-duy/beer-cooler/dataset/1
